@@ -1,0 +1,58 @@
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: minio_storage
+    ports:
+      - "9000:9000" # S3 API port
+      - "9001:9001" # Web UI port
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=password
+    command: server /data --console-address ":9001"
+    volumes:
+      - ./minio_data:/data
+
+  spark-jupyter:
+    image: jupyter/pyspark-notebook:latest
+    container_name: spark_workspace
+    ports:
+      - "8888:8888" # Jupyter Lab UI
+      - "4040:4040" # Spark Web UI
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+    volumes:
+      - ./notebooks:/home/jovyan/work
+    depends_on:
+      - minio
+     
+  postgres-airflow:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    ports:
+      - "5432:5432"
+
+  airflow:
+      image: apache/airflow:2.8.1
+      depends_on:
+        - postgres-airflow
+      environment:
+        # We changed CORE to DATABASE to fix the deprecation warnings!
+        - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres-airflow/airflow
+        - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+        - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      volumes:
+        - ./dags:/opt/airflow/dags       
+        - ./scripts:/opt/airflow/scripts 
+      ports:
+        - "8091:8080" # Keeping your custom 8091 port mapping
+      # The > allows us to write a clean, multi-line bash script that runs sequentially
+      command: >
+        bash -c "
+        airflow db migrate ;
+        airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com || true ;
+        airflow webserver -p 8080 -D ;
+        airflow scheduler
+        "
