@@ -42,6 +42,16 @@ with DAG('daily_cdp_update', default_args=default_args, schedule_interval='0 2 *
         bash_command='spark-submit --jars /opt/airflow/jars/delta-spark_2.12-3.1.0.jar,/opt/airflow/jars/delta-storage-3.1.0.jar,/opt/airflow/jars/hadoop-aws-3.3.4.jar,/opt/airflow/jars/aws-java-sdk-bundle-1.12.262.jar /opt/airflow/scripts/silver_items.py'
     )
 
+    run_silver_reviews = BashOperator(
+        task_id='silver_reviews',
+        bash_command='spark-submit --jars /opt/airflow/jars/delta-spark_2.12-3.1.0.jar,/opt/airflow/jars/delta-storage-3.1.0.jar,/opt/airflow/jars/hadoop-aws-3.3.4.jar,/opt/airflow/jars/aws-java-sdk-bundle-1.12.262.jar /opt/airflow/scripts/silver_reviews.py'
+    )
+
+    run_silver_products = BashOperator(
+        task_id='silver_products',
+        bash_command='spark-submit --jars /opt/airflow/jars/delta-spark_2.12-3.1.0.jar,/opt/airflow/jars/delta-storage-3.1.0.jar,/opt/airflow/jars/hadoop-aws-3.3.4.jar,/opt/airflow/jars/aws-java-sdk-bundle-1.12.262.jar /opt/airflow/scripts/silver_products.py'
+    )
+
     run_gold_cdp = BashOperator(
         task_id='gold_customer_360',
         bash_command='spark-submit --jars /opt/airflow/jars/delta-spark_2.12-3.1.0.jar,/opt/airflow/jars/delta-storage-3.1.0.jar,/opt/airflow/jars/hadoop-aws-3.3.4.jar,/opt/airflow/jars/aws-java-sdk-bundle-1.12.262.jar /opt/airflow/scripts/gold_customer_360.py'
@@ -49,4 +59,6 @@ with DAG('daily_cdp_update', default_args=default_args, schedule_interval='0 2 *
 
     # END
 
-    [run_silver_customers, run_silver_orders, run_silver_items] >> run_gold_cdp
+    # will run nodes in [] parrallel 
+    [run_silver_customers, run_silver_orders, run_silver_items, run_silver_reviews, run_silver_products] >> run_gold_cdp
+    # run_silver_customers >> run_silver_orders >> run_silver_items >> run_silver_reviews >> run_silver_products >> run_gold_cdp

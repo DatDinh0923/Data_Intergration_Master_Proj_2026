@@ -1,41 +1,45 @@
-from pyspark.sql.functions import col, sum, countDistinct, max, round
+from pyspark.sql.functions import col, sum, countDistinct, max, round, avg, mode
 from spark_utils import get_spark_session
-print("--- Starting Gold Layer: Customer 360 ---")
 
 spark = get_spark_session("Gold_CDP")
+print("--- Starting Gold Layer: The Ultimate Customer 360 ---")
 
-# 1. LOAD SILVER DATA (No schemas needed, Delta remembers!)
+# 1. LOAD ALL 5 SILVER TABLES
 df_customers = spark.read.format("delta").load("s3a://olist-data/silver/customers")
 df_orders = spark.read.format("delta").load("s3a://olist-data/silver/orders")
 df_items = spark.read.format("delta").load("s3a://olist-data/silver/order_items")
+df_reviews = spark.read.format("delta").load("s3a://olist-data/silver/reviews")
+df_products = spark.read.format("delta").load("s3a://olist-data/silver/products")
 
-# 2. THE BIG JOIN (Fusing the data together)
-# Join Orders and Items to figure out the cost of each order
-df_order_spend = df_orders.join(df_items, on="order_id", how="inner")
+# 2. THE BIG JOIN 
+# Chain the joins together carefully using LEFT JOINs where data might be missing
+df_full = df_orders \
+    .join(df_items, on="order_id", how="inner") \
+    .join(df_customers, on="customer_id", how="inner") \
+    .join(df_products, on="product_id", how="left") \
+    .join(df_reviews, on="order_id", how="left")
 
-# Join with Customers to attach the real human ID and their city
-df_full_history = df_order_spend.join(df_customers, on="customer_id", how="inner")
-
-# 3. AGGREGATE THE CDP (Squash it down to one row per human)
-# Notice we group by customer_UNIQUE_id here!
-df_customer_360 = df_full_history.groupBy("customer_unique_id", "customer_city").agg(
-    
-    # Frequency: Count how many unique orders they placed
+# 3. AGGREGATE THE CDP
+df_customer_360 = df_full.groupBy("customer_unique_id", "customer_city").agg(
     countDistinct("order_id").alias("total_orders"),
-    
-    # Monetary: Sum of all item prices + freight costs, rounded to 2 decimals
     round(sum(col("price") + col("freight_value")), 2).alias("total_lifetime_value"),
+    max("order_purchase_timestamp").alias("last_purchase_date"),
     
-    # Recency: Find the timestamp of their most recent purchase
-    max("order_purchase_timestamp").alias("last_purchase_date")
+    # NEW: Average satisfaction score
+    round(avg("review_score"), 1).alias("average_review_score"),
+    
+    # NEW: The category they buy from the most!
+    mode("product_category_name").alias("favorite_category") 
 )
 
 # 4. WRITE TO GOLD
+# df_customer_360.write.format("delta").mode("overwrite").save("s3a://olist-data/gold/customer_360")
+
 df_customer_360.write.format("delta") \
     .mode("overwrite") \
+    .option("overwriteSchema", "true") \
     .save("s3a://olist-data/gold/customer_360")
+print("Success! Customer 360 Table is fully enriched.")
 
-print("Success! Customer 360 Table built in Gold Layer.")
 
-# Let's peek at the final product! Sort by highest spenders.
 df_customer_360.orderBy(col("total_lifetime_value").desc()).show(5)

@@ -20,7 +20,7 @@ df_cleaned = df_cleaned.withColumn("order_purchase_timestamp", to_timestamp(col(
                        .withColumn("order_delivered_customer_date", to_timestamp(col("order_delivered_customer_date")))
 
 # 3. DQ CHECKS
-print("Running DQ Checks...")
+print("Running DQ Checks olist_orders_dataset.csv ...")
 # Check for null primary keys
 print("DQ Check: If there is any NULL value in order_id ...")
 null_orders = df_cleaned.filter(col("order_id").isNull()).count()

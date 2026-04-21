@@ -20,7 +20,7 @@ df_cleaned = df_customers_bronze \
     .withColumn("customer_city", translate(col("customer_city"), "áàâãäéèêëíìîïóòôõöúùûüç", "aaaaaeeeeiiiiooooouuuuc"))
 
 # 3. AUTOMATED DATA QUALITY (DQ) CHECKS
-print("Running Automated DQ Checks...")
+print("Running Automated DQ Checks olist_customers_dataset.csv ...")
 
 # Rule A: Customer ID cannot be null
 print("DQ Check: If there is any NULL value in customer_id ...")

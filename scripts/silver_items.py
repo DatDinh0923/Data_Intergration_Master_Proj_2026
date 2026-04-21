@@ -19,6 +19,8 @@ df_items_clean = df_items_bronze \
     .filter(col("price") >= 0)
 
 # 3. DQ CHECKS
+print("Running Automated DQ Checks olist_order_items_dataset.csv ...")
+
 print("DQ Check: If there is any NULL value in neither order_id nor product_id ...")
 null_foreign_keys = df_items_clean.filter(col("order_id").isNull() | col("product_id").isNull()).count()
 if null_foreign_keys > 0:
