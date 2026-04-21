@@ -1,6 +1,8 @@
-from pyspark.sql.functions import sum, max, round
+from pyspark.sql.functions import col, sum, countDistinct, max, round
 from spark_utils import get_spark_session
 print("--- Starting Gold Layer: Customer 360 ---")
+
+spark = get_spark_session("Gold_CDP")
 
 # 1. LOAD SILVER DATA (No schemas needed, Delta remembers!)
 df_customers = spark.read.format("delta").load("s3a://olist-data/silver/customers")

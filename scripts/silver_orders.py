@@ -1,6 +1,9 @@
 from pyspark.sql.functions import col, to_timestamp
 from pyspark.sql.utils import AnalysisException
 from spark_utils import get_spark_session
+
+spark = get_spark_session("Silver_Orders")
+
 # 1. LOAD BRONZE DATA
 df_orders_bronze = spark.read.format("csv") \
     .option("header", "true") \

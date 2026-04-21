@@ -1,6 +1,10 @@
 from pyspark.sql.functions import col
 from pyspark.sql.utils import AnalysisException
 from spark_utils import get_spark_session
+
+spark = get_spark_session("Silver_Items")
+
+
 # 1. LOAD BRONZE
 df_items_bronze = spark.read.format("csv") \
     .option("header", "true") \
