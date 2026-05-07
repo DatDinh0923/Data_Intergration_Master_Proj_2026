@@ -24,11 +24,7 @@ df_customer_360 = df_full.groupBy("customer_unique_id", "customer_city").agg(
     countDistinct("order_id").alias("total_orders"),
     round(sum(col("price") + col("freight_value")), 2).alias("total_lifetime_value"),
     max("order_purchase_timestamp").alias("last_purchase_date"),
-    
-    # NEW: Average satisfaction score
     round(avg("review_score"), 1).alias("average_review_score"),
-    
-    # NEW: The category they buy from the most!
     mode("product_category_name").alias("favorite_category") 
 )
 
@@ -39,6 +35,7 @@ df_customer_360.write.format("delta") \
     .mode("overwrite") \
     .option("overwriteSchema", "true") \
     .save("s3a://olist-data/gold/customer_360")
+
 print("Success! Customer 360 Table is fully enriched.")
 
 
