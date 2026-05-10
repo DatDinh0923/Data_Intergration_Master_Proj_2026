@@ -5,11 +5,11 @@ from spark_utils import get_spark_session
 spark = get_spark_session("Silver_Customers")
 
 # 1. LOAD BRONZE DATA
-df_customers_bronze = spark.read.format("csv") \
-    .option("header", "true") \
-    .option("inferSchema", "true") \
-    .load("s3a://olist-data/bronze/olist_customers_dataset.csv")
-
+# df_customers_bronze = spark.read.format("csv") \
+#     .option("header", "true") \
+#     .option("inferSchema", "true") \
+#     .load("s3a://olist-data/bronze/olist_customers_dataset.csv")
+df_customers_bronze = spark.read.format("delta").load("s3a://olist-data/bronze/olist_customers")
 df_customers_bronze.printSchema()
 df_customers_bronze.show(5)
 
@@ -40,6 +40,7 @@ print("DQ Checks Passed! Proceeding to write to Silver.")
 # 4. WRITE TO SILVER (Enforces Schema & Enables Time Travel)
 df_cleaned.write.format("delta") \
     .mode("overwrite") \
+    .option("overwriteSchema", "true") \
     .save("s3a://olist-data/silver/customers")
 
 print("Successfully wrote Customers to Silver Delta Table.")

@@ -4,10 +4,11 @@ from spark_utils import get_spark_session
 spark = get_spark_session("Silver_Reviews")
 
 print("--- Starting Silver Pipeline: Reviews ---")
-df_bronze = spark.read.format("csv") \
-    .option("header", "true") \
-    .option("inferSchema", "true") \
-    .load("s3a://olist-data/bronze/olist_order_reviews_dataset.csv")
+# df_bronze = spark.read.format("csv") \
+#     .option("header", "true") \
+#     .option("inferSchema", "true") \
+#     .load("s3a://olist-data/bronze/olist_order_reviews_dataset.csv")
+df_bronze = spark.read.format("delta").load("s3a://olist-data/bronze/olist_reviews")
 
 # 1. Clean: Select only what we need, enforce types, filter bad scores
 df_clean = df_bronze.select("review_id", "order_id", col("review_score").cast("int")) \
@@ -23,5 +24,5 @@ if nulls > 0:
 print("DQ Checks Passed! Proceeding to write to Silver.")
 
 # 3. Write to Silver
-df_clean.write.format("delta").mode("overwrite").save("s3a://olist-data/silver/reviews")
+df_clean.write.format("delta").mode("overwrite").option("overwriteSchema", "true").save("s3a://olist-data/silver/reviews")
 print("Success: Reviews written to Silver.")

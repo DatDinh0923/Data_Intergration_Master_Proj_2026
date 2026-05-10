@@ -9,13 +9,11 @@ df_items = spark.read.format("delta").load("s3a://olist-data/silver/order_items"
 df_customers = spark.read.format("delta").load("s3a://olist-data/silver/customers")
 df_products = spark.read.format("delta").load("s3a://olist-data/silver/products")
 
-# Nối các bảng để có đủ thông tin (Ngày tháng, Bang, Danh mục, Tiền)
 df_full = df_items \
     .join(df_orders.select("order_id", "customer_id", "order_purchase_timestamp"), on="order_id", how="inner") \
     .join(df_customers.select("customer_id", "customer_state"), on="customer_id", how="inner") \
     .join(df_products.select("product_id", "product_category_name"), on="product_id", how="left")
 
-# Gom nhóm tạo Cube
 df_cube = df_full.groupBy(
     year("order_purchase_timestamp").alias("order_year"),
     month("order_purchase_timestamp").alias("order_month"),

@@ -5,10 +5,11 @@ from spark_utils import get_spark_session
 spark = get_spark_session("Silver_Orders")
 
 # 1. LOAD BRONZE DATA
-df_orders_bronze = spark.read.format("csv") \
-    .option("header", "true") \
-    .option("inferSchema", "true") \
-    .load("s3a://olist-data/bronze/olist_orders_dataset.csv")
+# df_orders_bronze = spark.read.format("csv") \
+#     .option("header", "true") \
+#     .option("inferSchema", "true") \
+#     .load("s3a://olist-data/bronze/olist_orders_dataset.csv")
+df_orders_bronze = spark.read.format("delta").load("s3a://olist-data/bronze/olist_orders")
 
 # 2. TRANSFORM & CLEAN
 # Whitelist approach: Only keep successfully delivered orders
@@ -32,6 +33,7 @@ print("DQ Checks Passed! Proceeding to write to Silver.")
 # 4. WRITE TO SILVER (Delta format)
 df_cleaned.write.format("delta") \
     .mode("overwrite") \
+    .option("overwriteSchema", "true") \
     .save("s3a://olist-data/silver/orders")
 
 print("Successfully wrote Orders to Silver Delta Table.")

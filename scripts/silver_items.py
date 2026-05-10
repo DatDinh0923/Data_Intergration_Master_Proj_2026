@@ -6,10 +6,12 @@ spark = get_spark_session("Silver_Items")
 
 
 # 1. LOAD BRONZE
-df_items_bronze = spark.read.format("csv") \
-    .option("header", "true") \
-    .option("inferSchema", "true") \
-    .load("s3a://olist-data/bronze/olist_order_items_dataset.csv")
+# df_items_bronze = spark.read.format("csv") \
+#     .option("header", "true") \
+#     .option("inferSchema", "true") \
+#     .load("s3a://olist-data/bronze/olist_order_items_dataset.csv")
+df_items_bronze = spark.read.format("delta").load("s3a://olist-data/bronze/olist_items")
+
 
 # 2. TRANSFORM & CLEAN
 # Ensure price and freight are numbers, and filter out impossible negative values
@@ -30,6 +32,7 @@ print("DQ Checks Passed! Proceeding to write to Silver.")
 # 4. WRITE TO SILVER
 df_items_clean.write.format("delta") \
     .mode("overwrite") \
+    .option("overwriteSchema", "true") \
     .save("s3a://olist-data/silver/order_items")
 
 print("Successfully wrote Order Items to Silver.")
