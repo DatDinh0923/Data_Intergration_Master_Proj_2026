@@ -1,4 +1,16 @@
-To make the project become TRULY "multi-channel CDP", with olist alone will not suffice, cuz it will count as only one source of data.
-need to add CRM, or zendesk/customer support, sth like that to make it truly a multi-channel.
+DQ: chuẩn hóa các dữ liệu, các kiểu
 
-Adding them can be generated through synthetic data only, cuz nobody publish all their internal company data onto the web.
+Dữ liệu có nghĩa, sắp xếp lại làm sao cho đóng gói lại các dữ liệu dễ phân tích.
+Nên chuyển thành dạng số thì tốt hơn là việc chuyển về dạng chữ.
+
+Power BI
+
+Tại data chỉ mường tượng, cần phải scalable.
+-> tiếp theo cần phải nhét thêm vào để  DEMO?
+-> Security?
+
+Xử lí phần update thêm dữ liệu mới, ghi đè?
+
+--> Scalability
+    -? SCD Type 2?
+    + CTC: chỉ bắt dữ liệu thay đổi, incremental refresh.

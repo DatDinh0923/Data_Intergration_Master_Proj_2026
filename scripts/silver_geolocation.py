@@ -6,7 +6,7 @@ print("--- Starting Silver Pipeline: Geolocation ---")
 
 df_bronze = spark.read.format("delta").load("s3a://olist-data/bronze/olist_geolocation")
 
-# 1. NORMALIZE STRINGS: Lowercase and remove accents (são paulo -> sao paulo)
+# 1. NORMALIZE STRINGS: Lowercase and remove accents
 df_normalized = df_bronze \
     .withColumn("geolocation_city", lower(col("geolocation_city"))) \
     .withColumn("geolocation_city", translate(col("geolocation_city"), "áàâãäéèêëíìîïóòôõöúùûüç", "aaaaaeeeeiiiiooooouuuuc"))
