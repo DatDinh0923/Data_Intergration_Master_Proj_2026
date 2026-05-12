@@ -1,54 +1,89 @@
-from pyspark.sql.functions import current_timestamp, lit
+import boto3
+from pyspark.sql.functions import current_timestamp, input_file_name
 from spark_utils import get_spark_session
+spark = get_spark_session("Cloud_Native_Bronze_Ingest")
 
-spark = get_spark_session("Bronze_Ingestion")
+# 1. CLOUD CONFIGURATION
+BUCKET = "olist-data"
+LANDING_PREFIX = "landing"
+ARCHIVE_PREFIX = "archive"
+BRONZE_BASE_PATH = f"s3a://{BUCKET}/bronze"
 
-# Define all 11 tables mapping (Landing CSV Path -> Bronze Delta Folder Name)
+# Connect to MinIO via Boto3
+s3 = boto3.client('s3',
+    endpoint_url='http://minio:9000', # Use 'localhost:9000' if running outside Docker
+    aws_access_key_id='admin',
+    aws_secret_access_key='password',
+    region_name='us-east-1'
+)
+
+# Mapping: Table Name -> Subfolder Name
 pipeline_tables = {
-    "olist_orders": "s3a://olist-data/landing/olist_orders_dataset.csv",
-    "olist_customers": "s3a://olist-data/landing/olist_customers_dataset.csv",
-    "olist_items": "s3a://olist-data/landing/olist_order_items_dataset.csv",
-    "olist_products": "s3a://olist-data/landing/olist_products_dataset.csv",
-    "olist_payments": "s3a://olist-data/landing/olist_order_payments_dataset.csv",
-    "olist_reviews": "s3a://olist-data/landing/olist_order_reviews_dataset.csv",
-    "olist_sellers": "s3a://olist-data/landing/olist_sellers_dataset.csv",
-    "olist_geolocation": "s3a://olist-data/landing/olist_geolocation_dataset.csv",
-    "translation": "s3a://olist-data/landing/product_category_name_translation.csv",
-    "crm_identities": "s3a://olist-data/landing/crm_raw",
-    "zendesk_tickets": "s3a://olist-data/landing/zendesk_raw"
+    "olist_orders": "orders",
+    "olist_customers": "customers",
+    "olist_items": "items",
+    "olist_products": "products",
+    "olist_payments": "payments",
+    "olist_reviews": "reviews",
+    "olist_sellers": "sellers",
+    "olist_geolocation": "geolocation",
+    "translation": "translation",
+    "crm_identities": "crm",
+    "helpdesk_tickets": "helpdesk"
 }
 
-print("--- Starting Bronze Ingestion & DQ Checks ---")
+print("--- Starting Cloud-Native Bronze Ingestion ---")
 
-for table_name, file_path in pipeline_tables.items():
-    print(f"\nProcessing: {table_name}...")
+for table_name, folder_name in pipeline_tables.items():
+    landing_folder_key = f"{LANDING_PREFIX}/{folder_name}/"
+    bronze_dest = f"{BRONZE_BASE_PATH}/{table_name}"
     
-    try:
-        # 1. READ RAW DATA
-        df_raw = spark.read.csv(file_path, header=True, inferSchema=True)
-        
-        # 2. AUTOMATED DQ LEVEL 1: Structural Checks
-        total_rows = df_raw.count()
-        num_columns = len(df_raw.columns)
-        
-        if total_rows == 0:
-            raise ValueError(f"DQ L1 FAIL: The file is totally empty! ({total_rows} rows)")
-            
-        if num_columns < 2:
-            raise ValueError(f"DQ L1 FAIL: Suspect file format. Only found {num_columns} column.")
-            
-        print(f"  [DQ PASS] Valid structure detected: {total_rows:,} rows, {num_columns} columns.")
-        
-        # 3. ADD GOVERNANCE METADATA
-        df_bronze = df_raw.withColumn("_ingested_at", current_timestamp()) \
-                          .withColumn("_source_file", lit(file_path))
-        
-        # 4. WRITE TO BRONZE AS DELTA (Enabling Time Travel!)
-        bronze_dest = f"s3a://olist-data/bronze/{table_name}"
-        df_bronze.write.format("delta").mode("overwrite").save(bronze_dest)
-        print(f"  [SUCCESS] Saved to Bronze Delta: {bronze_dest}")
-        
-    except Exception as e:
-        print(f"  [ERROR] Pipeline stopped for {table_name}. Reason: {e}")
+    # 2. CHECK FOR FILES IN MINIO (Replacing os.listdir)
+    response = s3.list_objects_v2(Bucket=BUCKET, Prefix=landing_folder_key)
+    
+    # Filter for actual .csv files (ignoring the folder marker itself)
+    files_to_process = [
+        obj['Key'] for obj in response.get('Contents', []) 
+        if obj['Key'].endswith('.csv')
+    ]
+    
+    if not files_to_process:
+        print(f"Skipping {table_name}: No new files in s3://{BUCKET}/{landing_folder_key}")
+        continue
 
-print("\nALL TABLES SUCCESSFULLY INGESTED TO BRONZE!")
+    print(f"Processing {table_name}: Found {len(files_to_process)} new file(s)...")
+
+    try:
+        # 3. SPARK READS DIRECTLY FROM S3
+        s3a_read_path = f"s3a://{BUCKET}/{landing_folder_key}*.csv"
+        
+        df_new = spark.read.format("csv") \
+            .option("header", "true") \
+            .option("inferSchema", "true") \
+            .load(s3a_read_path)
+            
+        # Add Governance Metadata
+        df_bronze = df_new \
+            .withColumn("_ingested_at", current_timestamp()) \
+            .withColumn("_source_file", input_file_name())
+
+        # 4. APPEND TO BRONZE DELTA
+        df_bronze.write.format("delta") \
+            .mode("append") \
+            .save(bronze_dest)
+        
+        # 5. MOVE TO ARCHIVE IN S3 (Replacing shutil.move)
+        for old_key in files_to_process:
+            filename = old_key.split('/')[-1]
+            new_key = f"{ARCHIVE_PREFIX}/{folder_name}/{filename}"
+            
+            # Copy to archive prefix, then delete from landing prefix
+            s3.copy_object(Bucket=BUCKET, CopySource={'Bucket': BUCKET, 'Key': old_key}, Key=new_key)
+            s3.delete_object(Bucket=BUCKET, Key=old_key)
+            
+        print(f"SUCCESS: {table_name} appended to Bronze and archived in MinIO.")
+
+    except Exception as e:
+        print(f"ERROR: Failed to process {table_name}. Reason: {e}")
+
+print("--- All tables processed ---")

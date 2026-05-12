@@ -13,4 +13,8 @@ RUN apt-get update && \
 USER airflow
 
 # Install PySpark (This gives us the spark-submit command!)
-RUN pip install --no-cache-dir pyspark==3.5.0
+RUN pip install --no-cache-dir \
+    pyspark==3.5.0 \
+    delta-spark==3.1.0 \
+    boto3 \
+    s3fs

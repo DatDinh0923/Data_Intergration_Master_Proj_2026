@@ -11,7 +11,7 @@ df_items = spark.read.format("delta").load("s3a://olist-data/silver/order_items"
 df_reviews = spark.read.format("delta").load("s3a://olist-data/silver/reviews")
 df_products = spark.read.format("delta").load("s3a://olist-data/silver/products")
 df_crm = spark.read.format("delta").load("s3a://olist-data/silver/crm")
-df_zendesk = spark.read.format("delta").load("s3a://olist-data/silver/zendesk")
+df_zendesk = spark.read.format("delta").load("s3a://olist-data/silver/helpdesk")
 df_geo = spark.read.format("delta").load("s3a://olist-data/silver/geolocation")
 
 
