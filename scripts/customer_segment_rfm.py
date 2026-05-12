@@ -31,9 +31,8 @@ df_segment = df_rfm_scores.withColumn("RFM_Segment",
 # 5. Ghi ra tầng Gold
 df_segment.write.format("delta") \
     .mode("overwrite") \
-    .option("overwriteSchema", "true") \
     .save("s3a://olist-data/gold/segment_rfm")
+    # .option("overwriteSchema", "true") \
 
 print("Success! RFM Segmentation saved.")
-# Đếm số lượng khách hàng theo từng phân khúc
-df_segment.groupBy("RFM_Segment").count().orderBy("RFM_Segment").show()
+# df_segment.groupBy("RFM_Segment").count().orderBy("RFM_Segment").show()

@@ -26,8 +26,8 @@ df_cube = df_full.groupBy(
 
 df_cube.write.format("delta") \
     .mode("overwrite") \
-    .option("overwriteSchema", "true") \
     .save("s3a://olist-data/gold/agg_sales_by_state_category_month")
+    # .option("overwriteSchema", "true") \
 
 print("Success! Sales Cube saved.")
-df_cube.orderBy(col("total_sales").desc()).show(5)
+# df_cube.orderBy(col("total_sales").desc()).show(5)

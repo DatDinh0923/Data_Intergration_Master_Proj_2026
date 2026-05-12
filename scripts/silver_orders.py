@@ -4,23 +4,23 @@ from spark_utils import get_spark_session
 
 spark = get_spark_session("Silver_Orders")
 
-# 1. LOAD BRONZE DATA
-# df_orders_bronze = spark.read.format("csv") \
-#     .option("header", "true") \
-#     .option("inferSchema", "true") \
-#     .load("s3a://olist-data/bronze/olist_orders_dataset.csv")
+# LOAD BRONZE DATA
 df_orders_bronze = spark.read.format("delta").load("s3a://olist-data/bronze/olist_orders")
 
-# 2. TRANSFORM & CLEAN
+# If the team return missing these important columns then it will affect the GOLD, so halt here if possible.
+REQUIRED_COLUMNS = ["order_id", "customer_id", "order_status", "order_purchase_timestamp"]
+missing_cols = [c for c in REQUIRED_COLUMNS if c not in df_orders_bronze.columns]
+if missing_cols:
+    raise Exception(f"FATAL: Source missing mandatory columns: {missing_cols}. Halting pipeline!")
+
+# TRANSFORM & CLEAN
 # Whitelist approach: Only keep successfully delivered orders
 # delivered, shipped, canceled, unavailable, invoiced, processing, created, and approved
 df_cleaned = df_orders_bronze.filter(col("order_status") == "delivered")
-
-# Convert string dates to actual PySpark Timestamps
 df_cleaned = df_cleaned.withColumn("order_purchase_timestamp", to_timestamp(col("order_purchase_timestamp"))) \
                        .withColumn("order_delivered_customer_date", to_timestamp(col("order_delivered_customer_date")))
 
-# 3. DQ CHECKS
+# DQ CHECKS
 print("Running DQ Checks olist_orders_dataset.csv ...")
 # Check for null primary keys
 print("DQ Check: If there is any NULL value in order_id ...")
@@ -30,10 +30,15 @@ if null_orders > 0:
 
 print("DQ Checks Passed! Proceeding to write to Silver.")
 
-# 4. WRITE TO SILVER (Delta format)
-df_cleaned.write.format("delta") \
+final_columns = [
+    "order_id", "customer_id", "order_status", "order_purchase_timestamp", 
+    "order_approved_at", "order_delivered_carrier_date", "order_delivered_customer_date", 
+    "order_estimated_delivery_date", "_ingested_at", "_source_file"
+]
+
+df_cleaned.select(*final_columns).write.format("delta") \
     .mode("overwrite") \
-    .option("overwriteSchema", "true") \
+    .option("mergeSchema", "true") \
     .save("s3a://olist-data/silver/orders")
 
 print("Successfully wrote Orders to Silver Delta Table.")
