@@ -42,7 +42,7 @@ final_columns = [
 
 df_cleaned.select(*final_columns).write.format("delta") \
     .mode("overwrite") \
-    .option("mergeSchema", "true") \
+    .option("overwriteSchema", "true") \
     .save("s3a://olist-data/silver/orders")
 
 print("Successfully wrote Orders to Silver Delta Table.")

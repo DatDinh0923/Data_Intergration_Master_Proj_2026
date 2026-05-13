@@ -26,10 +26,16 @@ missing_cols = [c for c in REQUIRED_COLUMNS if c not in df_bronze.columns]
 if missing_cols:
     raise Exception(f"FATAL: Source missing mandatory columns: {missing_cols}. Halting pipeline!")
 
-df_clean = df_bronze \
+df_casted = df_bronze \
     .withColumn("price", col("price").cast("double")) \
-    .withColumn("freight_value", col("freight_value").cast("double")) \
-    .filter(col("price") >= 0)
+    .withColumn("freight_value", col("freight_value").cast("double"))
+
+# DQ Check: cast must not silently produce NULLs (would happen on non-numeric source values)
+cast_failures = df_casted.filter(col("price").isNull() | col("freight_value").isNull()).count()
+if cast_failures > 0:
+    raise Exception(f"DQ FAIL: Found {cast_failures} rows where price/freight_value cast to NULL — bad source data!")
+
+df_clean = df_casted.filter(col("price") >= 0)
 
 # DQ Check: No missing foreign keys
 null_foreign_keys = df_clean.filter(col("order_id").isNull() | col("product_id").isNull()).count()

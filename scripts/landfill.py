@@ -51,9 +51,9 @@ import boto3
 # 1. CONNECT TO MINIO
 # Replace with your actual credentials and MinIO endpoint
 s3 = boto3.client('s3',
-    endpoint_url='http://localhost:9000', # Or your MinIO container IP
-    aws_access_key_id='minioadmin',
-    aws_secret_access_key='minioadmin',
+    endpoint_url='http://minio:9000', # From inside Airflow container; use http://localhost:9000 only when running on host
+    aws_access_key_id='admin',
+    aws_secret_access_key='password',
     region_name='us-east-1'
 )
 

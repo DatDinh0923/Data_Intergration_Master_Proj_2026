@@ -38,15 +38,15 @@ for table_name, folder_name in pipeline_tables.items():
     landing_folder_key = f"{LANDING_PREFIX}/{folder_name}/"
     bronze_dest = f"{BRONZE_BASE_PATH}/{table_name}"
     
-    # 2. CHECK FOR FILES IN MINIO (Replacing os.listdir)
-    response = s3.list_objects_v2(Bucket=BUCKET, Prefix=landing_folder_key)
-    
-    # Filter for actual .csv files (ignoring the folder marker itself)
-    files_to_process = [
-        obj['Key'] for obj in response.get('Contents', []) 
-        if obj['Key'].endswith('.csv')
-    ]
-    
+    # 2. CHECK FOR FILES IN MINIO — paginate to avoid the 1000-key cap
+    paginator = s3.get_paginator('list_objects_v2')
+    files_to_process = []
+    for page in paginator.paginate(Bucket=BUCKET, Prefix=landing_folder_key):
+        files_to_process.extend(
+            obj['Key'] for obj in page.get('Contents', [])
+            if obj['Key'].endswith('.csv')
+        )
+
     if not files_to_process:
         print(f"Skipping {table_name}: No new files in s3://{BUCKET}/{landing_folder_key}")
         continue
@@ -54,13 +54,13 @@ for table_name, folder_name in pipeline_tables.items():
     print(f"Processing {table_name}: Found {len(files_to_process)} new file(s)...")
 
     try:
-        # 3. SPARK READS DIRECTLY FROM S3
-        s3a_read_path = f"s3a://{BUCKET}/{landing_folder_key}*.csv"
-        
+        # 3. SPARK READS ONLY THE FILES WE LISTED (avoids race with new uploads)
+        s3a_paths = [f"s3a://{BUCKET}/{k}" for k in files_to_process]
+
         df_new = spark.read.format("csv") \
             .option("header", "true") \
             .option("inferSchema", "true") \
-            .load(s3a_read_path)
+            .load(s3a_paths)
             
         # Add Governance Metadata
         df_bronze = df_new \

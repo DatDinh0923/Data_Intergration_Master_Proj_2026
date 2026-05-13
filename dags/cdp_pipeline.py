@@ -5,7 +5,7 @@ from datetime import datetime
 # 1. Define the schedule
 default_args = {
     'owner': 'data_engineer',
-    'start_date': datetime(2026, 4, 20),
+    'start_date': datetime(2024, 1, 1),
     'retries': 1,
 }
 

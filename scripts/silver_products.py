@@ -20,8 +20,22 @@ if df_bronze.count() == 0:
     sys.exit(0)
 
 # --- 2. TRANSFORM & CLEAN ---
-# FIXED: Included _ingested_at and _source_file in the select
-df_clean = df_bronze.select("product_id", "product_category_name", "_ingested_at", "_source_file") \
+PRODUCT_COLUMNS = [
+    "product_id",
+    "product_category_name",
+    "product_name_lenght",
+    "product_description_lenght",
+    "product_photos_qty",
+    "product_weight_g",
+    "product_length_cm",
+    "product_height_cm",
+    "product_width_cm",
+    "_ingested_at",
+    "_source_file",
+]
+# Keep only columns that actually exist in Bronze (defensive against schema drift)
+present_cols = [c for c in PRODUCT_COLUMNS if c in df_bronze.columns]
+df_clean = df_bronze.select(*present_cols) \
     .withColumn("product_category_name", lower(col("product_category_name"))) \
     .fillna("unknown", subset=["product_category_name"])
 

@@ -25,8 +25,14 @@ missing_cols = [c for c in REQUIRED_COLUMNS if c not in df_bronze.columns]
 if missing_cols:
     raise Exception(f"FATAL: Source missing mandatory columns: {missing_cols}. Halting pipeline!")
 
-df_clean = df_bronze.withColumn("payment_value", col("payment_value").cast("double")) \
-                    .filter(col("payment_value") >= 0)
+df_casted = df_bronze.withColumn("payment_value", col("payment_value").cast("double"))
+
+# DQ Check: cast must not silently produce NULLs (would happen on non-numeric source values)
+cast_failures = df_casted.filter(col("payment_value").isNull()).count()
+if cast_failures > 0:
+    raise Exception(f"DQ L2 FAIL: Found {cast_failures} rows where payment_value cast to NULL — bad source data!")
+
+df_clean = df_casted.filter(col("payment_value") >= 0)
 
 null_orders = df_clean.filter(col("order_id").isNull()).count()
 if null_orders > 0:
