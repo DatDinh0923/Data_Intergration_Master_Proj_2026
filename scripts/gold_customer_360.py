@@ -54,8 +54,3 @@ df_customer_360.write.format("delta") \
     # .option("overwriteSchema", "true") \
 
 print("Success! Multi-Channel Customer 360 Table is fully enriched.")
-
-# df_customer_360.select(
-#     "customer_unique_id", "email", "total_lifetime_value", 
-#     "favorite_category", "average_review_score", "total_support_tickets", "lat"
-# ).orderBy(col("total_lifetime_value").desc()).show(5, truncate=False)

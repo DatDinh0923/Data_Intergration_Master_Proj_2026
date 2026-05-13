@@ -21,8 +21,10 @@ SPARK_SUBMIT_CMD = '''
 with DAG(
     'medallion_end_to_end_pipeline', 
     default_args=default_args, 
-    schedule_interval=None,  # Change to '0 2 * * *' when ready to automate daily
-    catchup=False
+    # schedule_interval='*/5 * * * *',  # CRON for "Every 5 minutes"
+    schedule_interval='0 2 * * *',
+    catchup=False,
+    max_active_runs=1  # Still keep this to prevent overlaps!
 ) as dag:
 
     # ==========================================

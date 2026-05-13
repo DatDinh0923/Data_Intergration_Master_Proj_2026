@@ -72,7 +72,6 @@ for table_name, folder_name in pipeline_tables.items():
             .mode("append") \
             .save(bronze_dest)
         
-        # 5. MOVE TO ARCHIVE IN S3 (Replacing shutil.move)
         for old_key in files_to_process:
             filename = old_key.split('/')[-1]
             new_key = f"{ARCHIVE_PREFIX}/{folder_name}/{filename}"

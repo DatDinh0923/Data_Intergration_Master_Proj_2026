@@ -52,8 +52,8 @@ import boto3
 # Replace with your actual credentials and MinIO endpoint
 s3 = boto3.client('s3',
     endpoint_url='http://localhost:9000', # Or your MinIO container IP
-    aws_access_key_id='minioadmin',
-    aws_secret_access_key='minioadmin',
+    aws_access_key_id='admin',
+    aws_secret_access_key='password',
     region_name='us-east-1'
 )
 
