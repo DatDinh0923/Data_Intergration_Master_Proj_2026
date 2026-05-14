@@ -21,7 +21,7 @@ SPARK_SUBMIT_CMD = '''
 with DAG(
     'medallion_end_to_end_pipeline', 
     default_args=default_args, 
-    schedule_interval=None,  # Change to '0 2 * * *' when ready to automate daily
+    schedule_interval=None,  # Change to '0 2 * * *' when ready to automate daily * * * * *
     catchup=False
 ) as dag:
 
