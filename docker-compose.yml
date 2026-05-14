@@ -12,6 +12,64 @@ services:
     volumes:
       - ./minio_data:/data
 
+  # --- NEW: Infrastructure Bootstrapper ---
+  minio-init:
+    image: minio/mc:latest
+    container_name: minio_setup
+    depends_on:
+      - minio
+    volumes:
+      - ./olist_ecommerce:/raw_data  
+    entrypoint: >
+      /bin/sh -c "
+      echo '1. Waiting for MinIO to wake up...';
+      sleep 10;
+      
+      echo '2. Configuring MinIO Client...';
+      mc alias set myminio http://minio:9000 admin password;
+      mc mb myminio/olist-data --ignore-existing;
+      
+      echo '3. Commencing Uploads...';
+      
+      echo '--> Uploading Orders...';
+      mc cp /raw_data/olist_orders_dataset.csv myminio/olist-data/landing/orders/olist_orders_dataset.csv || echo '[!] FAILED: Orders';
+      
+      echo '--> Uploading Customers...';
+      mc cp /raw_data/olist_customers_dataset.csv myminio/olist-data/landing/customers/olist_customers_dataset.csv || echo '[!] FAILED: Customers';
+      
+      echo '--> Uploading Items...';
+      mc cp /raw_data/olist_order_items_dataset.csv myminio/olist-data/landing/items/olist_order_items_dataset.csv || echo '[!] FAILED: Items';
+      
+      echo '--> Uploading Products...';
+      mc cp /raw_data/olist_products_dataset.csv myminio/olist-data/landing/products/olist_products_dataset.csv || echo '[!] FAILED: Products';
+      
+      echo '--> Uploading Payments...';
+      mc cp /raw_data/olist_order_payments_dataset.csv myminio/olist-data/landing/payments/olist_order_payments_dataset.csv || echo '[!] FAILED: Payments';
+      
+      echo '--> Uploading Reviews...';
+      mc cp /raw_data/olist_order_reviews_dataset.csv myminio/olist-data/landing/reviews/olist_order_reviews_dataset.csv || echo '[!] FAILED: Reviews';
+      
+      echo '--> Uploading Sellers...';
+      mc cp /raw_data/olist_sellers_dataset.csv myminio/olist-data/landing/sellers/olist_sellers_dataset.csv || echo '[!] FAILED: Sellers';
+      
+      echo '--> Uploading Geolocation...';
+      mc cp /raw_data/olist_geolocation_dataset.csv myminio/olist-data/landing/geolocation/olist_geolocation_dataset.csv || echo '[!] FAILED: Geolocation';
+      
+      echo '--> Uploading Translation...';
+      mc cp /raw_data/product_category_name_translation.csv myminio/olist-data/landing/translation/product_category_name_translation.csv || echo '[!] FAILED: Translation';
+      
+      echo '--> Uploading CRM...';
+      mc cp /raw_data/crm_identities.csv myminio/olist-data/landing/crm/crm_identities.csv || echo '[!] FAILED: CRM';
+      
+      echo '--> Uploading Helpdesk...';
+      mc cp /raw_data/helpdesk_tickets.csv myminio/olist-data/landing/helpdesk/helpdesk_tickets.csv || echo '[!] FAILED: Helpdesk';
+      
+      echo '---------------------------------------------';
+      echo '--- VERIFICATION: PRINTING BUCKET CONTENTS ---';
+      mc ls -r myminio/olist-data;
+      echo 'Bootstrapping Complete! Container will now exit.';
+      "
+
   spark-jupyter:
     image: jupyter/pyspark-notebook:latest
     container_name: spark_workspace

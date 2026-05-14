@@ -21,7 +21,7 @@ SPARK_SUBMIT_CMD = '''
 with DAG(
     'medallion_end_to_end_pipeline', 
     default_args=default_args, 
-    schedule_interval=None,  # Change to '0 2 * * *' when ready to automate daily * * * * *
+    schedule_interval=None,#"*/2 * * * *",  # Change to '0 2 * * *' when ready to automate daily * * * * *
     catchup=False
 ) as dag:
 
@@ -30,7 +30,8 @@ with DAG(
     # ==========================================
     run_bronze_ingestion = BashOperator(
         task_id='bronze_ingestion',
-        bash_command=f'{SPARK_SUBMIT_CMD} /opt/airflow/scripts/bronze_check.py'
+        bash_command=f'{SPARK_SUBMIT_CMD} /opt/airflow/scripts/bronze_check.py',
+        skip_on_exit_code=99
     )
 
     # ==========================================
