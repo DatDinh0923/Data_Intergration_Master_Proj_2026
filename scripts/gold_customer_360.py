@@ -75,12 +75,26 @@ if gold_max_ts is not None:
         .join(crm_keys, on="email") \
         .select("customer_unique_id")
 
+    # Geolocation changes -> zip_code_prefix -> customer_unique_id via customers.
+    # Closes the loop with the silver_geolocation fix: when a zip's lat/lng is
+    # re-averaged, every customer in that zip must refresh, even if they had no
+    # e-commerce/CRM activity in this window.
+    aff_geo = df_geo.filter(col("_ingested_at") > gold_max_ts) \
+        .select(col("geolocation_zip_code_prefix").alias("customer_zip_code_prefix")) \
+        .distinct() \
+        .join(
+            df_customers.select("customer_zip_code_prefix", "customer_unique_id"),
+            on="customer_zip_code_prefix",
+        ) \
+        .select("customer_unique_id")
+
     affected_keys = aff_customers \
         .unionByName(aff_orders) \
         .unionByName(aff_items) \
         .unionByName(aff_reviews) \
         .unionByName(aff_crm) \
         .unionByName(aff_helpdesk) \
+        .unionByName(aff_geo) \
         .distinct()
 
     if affected_keys.rdd.isEmpty():
