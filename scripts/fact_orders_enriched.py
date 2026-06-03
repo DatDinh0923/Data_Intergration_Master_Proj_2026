@@ -17,8 +17,8 @@ df_items_agg = df_items.groupBy("order_id").agg(
     count("product_id").alias("total_items")
 )
 
-# ENRICH ORDERS (Join & SLA Calculations)
-# We calculate 'days_to_deliver' and 'delivery_delay_days' (if positive, it was late!)
+# ENRICH ORDERS
+# We calculate 'days_to_deliver' and 'delivery_delay_days'
 df_fact_orders = df_orders \
     .join(df_items_agg, on="order_id", how="inner") \
     .join(df_reviews.select("order_id", "review_score"), on="order_id", how="left") \

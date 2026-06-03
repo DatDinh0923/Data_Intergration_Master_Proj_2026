@@ -17,6 +17,7 @@ df_rfm = df_c360.withColumn(
 
 df_rfm.write.format("delta") \
     .mode("overwrite") \
+    .option("overwriteSchema", "true") \
     .save("s3a://olist-data/gold/segment_rfm")
 
 print("Success! RFM raw table saved.")

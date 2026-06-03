@@ -9,7 +9,7 @@ SILVER_PATH = "s3a://olist-data/silver/helpdesk"
 
 df_bronze = spark.read.format("delta").load(BRONZE_PATH)
 
-# --- 1. INCREMENTAL WATERMARK ---
+# INCREMENTAL WATERMARK 
 if DeltaTable.isDeltaTable(spark, SILVER_PATH):
     max_ingested = spark.read.format("delta").load(SILVER_PATH).selectExpr("max(_ingested_at)").collect()[0][0]
     if max_ingested:
@@ -19,8 +19,7 @@ if df_bronze.count() == 0:
     print("No new data to process. Pipeline finished.")
     sys.exit(0)
 
-# --- 2. TRANSFORM & CLEAN ---
-# FIXED: Included _ingested_at and _source_file in the select
+# TRANSFORM & CLEAN
 df_clean = df_bronze.select(
     "ticket_id", "email", "issue_type", 
     col("satisfaction_rating").cast("int"), 
@@ -31,7 +30,6 @@ invalid_ratings = df_clean.filter((col("satisfaction_rating") < 1) | (col("satis
 if invalid_ratings > 0:
     raise Exception(f"DQ L2 FAIL: Found {invalid_ratings} support tickets with ratings outside 1-5!")
 
-# --- 3. MERGE OR OVERWRITE ---
 if DeltaTable.isDeltaTable(spark, SILVER_PATH):
     print("Target exists. Performing MERGE...")
     silver_table = DeltaTable.forPath(spark, SILVER_PATH)

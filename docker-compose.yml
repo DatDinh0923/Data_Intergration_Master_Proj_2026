@@ -12,7 +12,7 @@ services:
     volumes:
       - ./minio_data:/data
 
-  # --- NEW: Infrastructure Bootstrapper ---
+  # --- Infrastructure Bootstrapper ---
   minio-init:
     image: minio/mc:latest
     container_name: minio_setup
@@ -100,17 +100,15 @@ services:
       depends_on:
         - postgres-airflow
       environment:
-        # We changed CORE to DATABASE to fix the deprecation warnings!
         - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres-airflow/airflow
         - AIRFLOW__CORE__EXECUTOR=LocalExecutor
         - AIRFLOW__CORE__LOAD_EXAMPLES=False
       volumes:
         - ./dags:/opt/airflow/dags       
         - ./scripts:/opt/airflow/scripts
-        - ./notebooks/jars:/opt/airflow/jars # <-- ADD THIS LINE, comment out this line when work at home cuz nobody need this
+        - ./notebooks/jars:/opt/airflow/jars
       ports:
-        - "8091:8080" # Keeping your custom 8091 port mapping
-      # The > allows us to write a clean, multi-line bash script that runs sequentially
+        - "8091:8080" 
       command: >
         bash -c "
         airflow db migrate ;

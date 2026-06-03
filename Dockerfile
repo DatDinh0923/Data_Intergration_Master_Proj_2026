@@ -1,4 +1,3 @@
-# Start with the official Airflow image
 FROM apache/airflow:2.8.1
 
 # Switch to the root user to install system packages
@@ -12,7 +11,7 @@ RUN apt-get update && \
 # Switch back to the airflow user
 USER airflow
 
-# Install PySpark (This gives us the spark-submit command!)
+# Install PySpark
 RUN pip install --no-cache-dir \
     pyspark==3.5.0 \
     delta-spark==3.1.0 \
